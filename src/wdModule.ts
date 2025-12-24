@@ -1,5 +1,7 @@
+import { load as cheerioLoad } from "cheerio";
 import { wdMethod } from "./wdMethod";
 
+import type { CheerioAPI } from "cheerio";
 import type { AjaxResponse, QuickModuleResponse } from "./types";
 
 export const wdModule = (baseUrl: string) => {
@@ -62,7 +64,20 @@ export const wdModule = (baseUrl: string) => {
     `;
     const baseUrl: string = `http://${siteName}.wikidot.com/${page}`;
     const gqlResult = (await post.cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
-    return gqlResult.page.wikidotInfo?.tags ?? [];
+    if (gqlResult.page.wikidotInfo !== null) {
+      return gqlResult.page.wikidotInfo.tags;
+    } else {
+      const pageTag: AjaxResponse = await post.ajaxPost(
+        { pageId: await post.getPageId(page) },
+        "pagetags/PageTagsModule",
+      );
+      if (pageTag.status === "no_page") {
+        throw new Error("页面不存在");
+      }
+      const tagDom: CheerioAPI = cheerioLoad(pageTag.body);
+      const tagValue: string = tagDom("input#page-tags-input").attr("value") || "";
+      return tagValue.split(" ").filter((tag: string): boolean => tag.length > 0);
+    }
   };
 
   /**

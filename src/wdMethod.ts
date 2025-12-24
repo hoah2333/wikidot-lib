@@ -34,12 +34,14 @@ export const wdMethod = (baseUrl: string) => {
    */
   const gql = (query: TemplateStringsArray, ...substitutions: string[]): string => String.raw(query, ...substitutions);
 
+  const sleep = (seconds: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
+
   const retry = async <T>(fn: () => Promise<T>, retryCount: number = 0): Promise<T> => {
     try {
       return await fn();
     } catch (error) {
       if (isNonRetryableError(error) || retryCount >= 60) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
+      await sleep(retryCount + 1);
       return await retry<T>(fn, retryCount + 1);
     }
   };
@@ -147,6 +149,9 @@ export const wdMethod = (baseUrl: string) => {
         return data;
       } catch (error) {
         errorInfo("Crom API 请求失败", error);
+        if (error instanceof Error && error.message.includes("You're making requests too often!")) {
+          await sleep(30);
+        }
         throw error;
       }
     });
@@ -182,7 +187,23 @@ export const wdMethod = (baseUrl: string) => {
     `;
     const baseUrl: string = `http://${siteName}.wikidot.com/${page}`;
     const gqlResult: GqlResult = (await cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
-    return gqlResult.page.wikidotInfo?.wikidotId ?? 0;
+    if (gqlResult.page.wikidotInfo !== null) {
+      return gqlResult.page.wikidotInfo.wikidotId;
+    } else {
+      const pageSource: string = await getPageSource(page);
+      const sourceDom: CheerioAPI = cheerioLoad(pageSource);
+      const scriptTag: Element = sourceDom("head > script").filter((_, element) =>
+        sourceDom(element).text().includes("WIKIREQUEST"),
+      )[0];
+      const pageIdMatch: RegExpMatchArray | null = sourceDom(scriptTag)
+        .text()
+        .match(/WIKIREQUEST\.info\.pageId\s*=\s*(\d+)\s*;/);
+      if (pageIdMatch) {
+        return parseInt(pageIdMatch[0].slice(26, -1));
+      } else {
+        return 0;
+      }
+    }
   };
 
   return { login, ajaxPost, quickGet, cromApiRequest, getPageSource, getPageId };

@@ -1,7 +1,7 @@
 {
   "name": "@hoah2333/wikidot-lib",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "A typescript library for using apis of Wikidot",
   "author": "hoah2333 <c3n6fak@gmail.com>",
   "license": "MIT",
