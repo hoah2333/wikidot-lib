@@ -1,0 +1,52 @@
+{
+  "name": "@hoah2333/wikidot-lib",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "A typescript library for using apis of Wikidot",
+  "author": "hoah2333 <c3n6fak@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/hoah2333/wikidot-api#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hoah2333/wikidot-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hoah2333/wikidot-api/issues"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.3",
+    "@types/qs": "^6.14.0",
+    "bumpp": "^10.3.2",
+    "domhandler": "^5.0.3",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "tsdown": "^0.18.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "qs": "^6.14.0"
+  }
+}
