@@ -84,6 +84,12 @@ export const wdMethod = (baseUrl: string) => {
       }
     });
 
+  const isLoggedIn = (): boolean => cookie !== "";
+
+  const logout = (): void => {
+    cookie = "";
+  };
+
   const ajaxPost = async (params: Record<string, string | number>, moduleName: string): Promise<AjaxResponse> =>
     await retry(async () => {
       try {
@@ -206,5 +212,5 @@ export const wdMethod = (baseUrl: string) => {
     }
   };
 
-  return { login, ajaxPost, quickGet, cromApiRequest, getPageSource, getPageId };
+  return { login, isLoggedIn, logout, ajaxPost, quickGet, cromApiRequest, getPageSource, getPageId };
 };

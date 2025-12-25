@@ -10,3 +10,9 @@ export interface AjaxResponse {
 export interface QuickModuleResponse {
   pages: { unix_name: string; title: string }[];
 }
+
+export interface Application {
+  userId: number;
+  userName: string;
+  content: string;
+}

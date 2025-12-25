@@ -2,7 +2,7 @@ import { load as cheerioLoad } from "cheerio";
 import { wdMethod } from "./wdMethod";
 
 import type { CheerioAPI } from "cheerio";
-import type { AjaxResponse, QuickModuleResponse } from "./types";
+import type { AjaxResponse, Application, QuickModuleResponse } from "./types";
 
 export const wdModule = (baseUrl: string) => {
   const post = wdMethod(baseUrl);
@@ -25,6 +25,17 @@ export const wdModule = (baseUrl: string) => {
    * @param password 密码
    */
   const login = async (username: string, password: string): Promise<void> => await post.login(username, password);
+
+  /**
+   * 登出 Wikidot 账号
+   */
+  const logout = (): void => post.logout();
+
+  /**
+   * 检查是否已登录
+   * @returns 是否已登录
+   */
+  const isLoggedIn = (): boolean => post.isLoggedIn();
 
   /**
    * 利用 ListPages 模块获取页面列表
@@ -148,8 +159,50 @@ export const wdModule = (baseUrl: string) => {
     return listpagesResult.body.includes(name);
   };
 
+  /**
+   * 获取申请书列表
+   * @returns 申请书列表
+   */
+  const getApplicationList = async (): Promise<Application[]> => {
+    const appList: AjaxResponse = await post.ajaxPost({}, "managesite/ManageSiteMembersApplicationsModule");
+    if (/\/common--images\/404_homer\.png/.test(appList.body)) {
+      throw new Error("用户未登录或不是本维基的管理员");
+    }
+
+    const appListDom: CheerioAPI = cheerioLoad(appList.body);
+    const userList: { userId: number; userName: string }[] = appListDom(".page-header ~ h3")
+      .map((_, element) => {
+        const userLink = appListDom(element).find(".printuser a:nth-of-type(2)");
+        return {
+          userId: Number(userLink.attr("onclick")?.match(/WIKIDOT\.page\.listeners\.userInfo\((\d+)\)/)?.[1]),
+          userName: userLink.text(),
+        };
+      })
+      .toArray();
+
+    const appContentList: { content: string }[] = appListDom(".page-header ~ .form tr:nth-of-type(1) td:nth-of-type(2)")
+      .map((_, element) => ({ content: appListDom(element).text().trim() }))
+      .toArray();
+
+    return userList.map((user, index: number) => Object.assign(user, appContentList[index]));
+  };
+
+  /**
+   * 处理申请书
+   * @param userId 用户 ID
+   * @param type "accept" 接受申请，"decline" 拒绝申请
+   * @returns
+   */
+  const handleApplication = async (userId: number, type: "accept" | "decline"): Promise<AjaxResponse> =>
+    await post.ajaxPost(
+      { action: "ManageSiteMembershipAction", event: "acceptApplication", user_id: userId, text: "", type },
+      "Empty",
+    );
+
   return {
     login,
+    logout,
+    isLoggedIn,
     getListpages,
     getPageSource,
     getTags,
@@ -159,5 +212,7 @@ export const wdModule = (baseUrl: string) => {
     searchPage,
     isPageExists,
     isPageExistsByListpages,
+    getApplicationList,
+    handleApplication,
   };
 };
