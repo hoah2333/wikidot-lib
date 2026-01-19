@@ -112,7 +112,7 @@ export const wdModule = (baseUrl: string) => {
     const baseUrl: string = `http://${siteName}.wikidot.com/${page}`;
     const gqlResult = (await post.cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
     if (gqlResult.page.wikidotInfo !== null) {
-      return gqlResult.page.wikidotInfo.source;
+      return gqlResult.page.wikidotInfo.source.replace(/\u00A0/g, " ");
     } else {
       const pageTag: AjaxResponse = await post.ajaxPost(
         { pageId: await post.getPageId(page) },
@@ -123,7 +123,7 @@ export const wdModule = (baseUrl: string) => {
       }
       const tagDom: CheerioAPI = cheerioLoad(pageTag.body);
       const tagValue: string = tagDom("div.page-source").text() || "";
-      return tagValue;
+      return tagValue.replace(/\u00A0/g, " ");
     }
   };
 
