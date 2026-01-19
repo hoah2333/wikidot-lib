@@ -1,5 +1,5 @@
 import { load as cheerioLoad } from "cheerio";
-import { wdMethod } from "./wdMethod";
+import { wdMethod, NoRetryError } from "./wdMethod";
 
 import type { CheerioAPI } from "cheerio";
 import type { AjaxResponse, Application, QuickModuleResponse } from "./types";
@@ -83,11 +83,47 @@ export const wdModule = (baseUrl: string) => {
         "pagetags/PageTagsModule",
       );
       if (pageTag.status === "no_page") {
-        throw new Error("页面不存在");
+        throw new NoRetryError("页面不存在");
       }
       const tagDom: CheerioAPI = cheerioLoad(pageTag.body);
       const tagValue: string = tagDom("input#page-tags-input").attr("value") || "";
       return tagValue.split(" ").filter((tag: string): boolean => tag.length > 0);
+    }
+  };
+
+  /**
+   * 利用 Crom API 按照 URL 获取页面源代码
+   * @param page 页面名称
+   * @param siteName 站点名称，默认为提供的 baseUrl 的站点名称
+   * @returns 页面源代码
+   */
+  const getSource = async (page: string, siteName: string = baseSiteName): Promise<string> => {
+    type GqlResult = { page: { url: string; wikidotInfo: { source: string } | null } };
+    const gqlQueryString: string | undefined = gql`
+      query tagQuery($url: URL!) {
+        page(url: $url) {
+          url
+          wikidotInfo {
+            source
+          }
+        }
+      }
+    `;
+    const baseUrl: string = `http://${siteName}.wikidot.com/${page}`;
+    const gqlResult = (await post.cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
+    if (gqlResult.page.wikidotInfo !== null) {
+      return gqlResult.page.wikidotInfo.source;
+    } else {
+      const pageTag: AjaxResponse = await post.ajaxPost(
+        { pageId: await post.getPageId(page) },
+        "viewsource/ViewSourceModule",
+      );
+      if (pageTag.status === "no_page") {
+        throw new NoRetryError("页面不存在");
+      }
+      const tagDom: CheerioAPI = cheerioLoad(pageTag.body);
+      const tagValue: string = tagDom("div.page-source").text() || "";
+      return tagValue;
     }
   };
 
@@ -166,7 +202,7 @@ export const wdModule = (baseUrl: string) => {
   const getApplicationList = async (): Promise<Application[]> => {
     const appList: AjaxResponse = await post.ajaxPost({}, "managesite/ManageSiteMembersApplicationsModule");
     if (/\/common--images\/404_homer\.png/.test(appList.body)) {
-      throw new Error("用户未登录或不是本维基的管理员");
+      throw new NoRetryError("用户未登录或不是本维基的管理员");
     }
 
     const appListDom: CheerioAPI = cheerioLoad(appList.body);
@@ -206,6 +242,7 @@ export const wdModule = (baseUrl: string) => {
     getListpages,
     getPageSource,
     getTags,
+    getSource,
     editTags,
     renamePage,
     deletePage,

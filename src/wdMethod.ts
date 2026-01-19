@@ -5,6 +5,14 @@ import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import type { AjaxResponse, QuickModuleResponse } from "./types";
 
+export class NoRetryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoRetryError";
+  }
+  noRetry: boolean = false;
+}
+
 export const wdMethod = (baseUrl: string) => {
   let cookie: string = "";
   const ajaxPath: string = `${baseUrl}/ajax-module-connector.php`;
@@ -24,8 +32,6 @@ export const wdMethod = (baseUrl: string) => {
     "Referer": "BRBot.aic",
   });
 
-  const isNonRetryableError = (error: unknown): boolean => Boolean((error as { noRetry?: boolean })?.noRetry === true);
-
   /**
    * 使 GraphQL 查询语句可以被 Prettier 格式化
    * @param query GraphQL 查询语句
@@ -40,7 +46,7 @@ export const wdMethod = (baseUrl: string) => {
     try {
       return await fn();
     } catch (error) {
-      if (isNonRetryableError(error) || retryCount >= 60) throw error;
+      if (error instanceof NoRetryError || retryCount >= 60) throw error;
       await sleep(retryCount + 1);
       return await retry<T>(fn, retryCount + 1);
     }
@@ -69,9 +75,7 @@ export const wdMethod = (baseUrl: string) => {
         const loginDom: CheerioAPI = cheerioLoad(await response.text());
         const errorMessage: Cheerio<Element> | null = loginDom("h2.error");
         if (errorMessage?.text().includes("The login and password do not match.")) {
-          const authError = new Error("用户名或密码错误");
-          (authError as { noRetry?: boolean }).noRetry = true;
-          throw authError;
+          throw new NoRetryError("用户名或密码错误");
         }
         const setCookie: string | null = response.headers.get("Set-Cookie");
         if (setCookie) {
