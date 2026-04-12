@@ -30,4 +30,5 @@ export interface MailMessage {
   title: string;
   body: string;
   time: Date;
+  fullResponse: string;
 }

@@ -259,8 +259,7 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
 
   /**
    * 获取邮件列表
-   * @param page
-   * @returns
+   * @param page 页面当前页数
    */
   const getMailList = async (page: number): Promise<MailList[]> => {
     if (!isLoggedIn()) {
@@ -289,6 +288,11 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     return mailList;
   };
 
+  /**
+   * 获取邮件内容
+   * @param messageId 邮件 ID
+   * @returns 
+   */
   const getMailMessage = async (messageId: number): Promise<MailMessage> => {
     if (!isLoggedIn()) {
       throw new NoRetryError("用户未登录");
@@ -305,7 +309,7 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     const time = mailDom(".pmessage > .header > div:nth-of-type(2) > .odate")
       .attr("class")
       ?.match(/time_(\d+)/)?.[1];
-    return { sender, title, body, time: new Date(Number(time) * 1000) };
+    return { sender, title, body, time: new Date(Number(time) * 1000), fullResponse: response.body };
   };
 
   return {
