@@ -1,7 +1,7 @@
 {
   "name": "@hoah2333/wikidot-lib",
   "type": "module",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A typescript library for using apis of Wikidot",
   "author": "hoah2333 <c3n6fak@gmail.com>",
   "license": "MIT",
@@ -14,10 +14,15 @@
     "url": "https://github.com/hoah2333/wikidot-api/issues"
   },
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.mts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "files": [
     "dist"
   ],
