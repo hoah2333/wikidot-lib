@@ -16,3 +16,18 @@ export interface Application {
   userName: string;
   content: string;
 }
+
+export interface MailList {
+  id: number;
+  sender: string;
+  title: string;
+  preview: string;
+  time: Date;
+}
+
+export interface MailMessage {
+  sender: string;
+  title: string;
+  body: string;
+  time: Date;
+}

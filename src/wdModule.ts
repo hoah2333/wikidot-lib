@@ -1,10 +1,10 @@
 import { load as cheerioLoad } from "cheerio";
-import { wdMethod, NoRetryError } from "./wdMethod";
+import { NoRetryError, wdMethod } from "./wdMethod";
 
 import type { CheerioAPI } from "cheerio";
-import type { AjaxResponse, Application, QuickModuleResponse } from "./types";
+import type { AjaxResponse, Application, MailList, MailMessage, QuickModuleResponse } from "./types";
 
-export const wdModule = (baseUrl: string) => {
+export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
   const post = wdMethod(baseUrl);
   const baseSiteName: string = baseUrl.split("//")[1].split(".")[0];
 
@@ -77,6 +77,8 @@ export const wdModule = (baseUrl: string) => {
     const gqlResult = (await post.cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
     if (gqlResult.page.wikidotInfo !== null) {
       return gqlResult.page.wikidotInfo.tags;
+    } else if (!isLoggedIn) {
+      throw new NoRetryError("用户未登录");
     } else {
       const pageTag: AjaxResponse = await post.ajaxPost(
         { pageId: await post.getPageId(page) },
@@ -132,23 +134,35 @@ export const wdModule = (baseUrl: string) => {
    * @param tags 标签列表
    * @param page 页面名称
    */
-  const editTags = async (tags: string[], page: string): Promise<AjaxResponse> =>
-    await pageActionPost({ tags: tags.join(" "), pageId: await post.getPageId(page) }, "saveTags");
+  const editTags = async (tags: string[], page: string): Promise<AjaxResponse> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    return await pageActionPost({ tags: tags.join(" "), pageId: await post.getPageId(page) }, "saveTags");
+  };
 
   /**
    * 重命名页面
    * @param page 页面名称
    * @param newPage 新页面名称
    */
-  const renamePage = async (page: string, newPage: string): Promise<AjaxResponse> =>
-    await pageActionPost({ new_name: newPage, page_id: await post.getPageId(page) }, "renamePage");
+  const renamePage = async (page: string, newPage: string): Promise<AjaxResponse> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    return await pageActionPost({ new_name: newPage, page_id: await post.getPageId(page) }, "renamePage");
+  };
 
   /**
    * 删除页面
    * @param page 页面名称
    */
-  const deletePage = async (page: string): Promise<AjaxResponse> =>
-    await pageActionPost({ page_id: await post.getPageId(page) }, "deletePage");
+  const deletePage = async (page: string): Promise<AjaxResponse> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    return await pageActionPost({ page_id: await post.getPageId(page) }, "deletePage");
+  };
 
   /**
    * 搜索页面
@@ -200,6 +214,10 @@ export const wdModule = (baseUrl: string) => {
    * @returns 申请书列表
    */
   const getApplicationList = async (): Promise<Application[]> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+
     const appList: AjaxResponse = await post.ajaxPost({}, "managesite/ManageSiteMembersApplicationsModule");
     if (/\/common--images\/404_homer\.png/.test(appList.body)) {
       throw new NoRetryError("用户未登录或不是本维基的管理员");
@@ -229,11 +247,66 @@ export const wdModule = (baseUrl: string) => {
    * @param type "accept" 接受申请，"decline" 拒绝申请
    * @returns
    */
-  const handleApplication = async (userId: number, type: "accept" | "decline"): Promise<AjaxResponse> =>
-    await post.ajaxPost(
+  const handleApplication = async (userId: number, type: "accept" | "decline"): Promise<AjaxResponse> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    return await post.ajaxPost(
       { action: "ManageSiteMembershipAction", event: "acceptApplication", user_id: userId, text: "", type },
       "Empty",
     );
+  };
+
+  /**
+   * 获取邮件列表
+   * @param page
+   * @returns
+   */
+  const getMailList = async (page: number): Promise<MailList[]> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    const response = await post.ajaxPost({ page }, "dashboard/messages/DMInboxModule");
+    if (response?.status !== "ok") {
+      throw new NoRetryError("获取邮件列表失败：" + response.body);
+    }
+    const mailListDom = cheerioLoad(response.body);
+    const mailList = mailListDom("table#messages-list")
+      .find("tr.message")
+      .map((_, element) => {
+        const mailItemDom = mailListDom(element);
+        const id = mailItemDom.attr("data-href")?.match(/#\/inbox\/(\d+)/)?.[1];
+        const sender = mailItemDom.find("td:nth-of-type(2) .from .printuser").text().trim();
+        const title = mailItemDom.find("td:nth-of-type(3) .subject").text().trim();
+        const preview = mailItemDom.find("td:nth-of-type(3) .preview").text().trim();
+        const time = mailItemDom
+          .find("td:nth-of-type(4) .date .odate")
+          .attr("class")
+          ?.match(/time_(\d+)/)?.[1];
+        return { id: Number(id), sender, title, preview, time: new Date(Number(time) * 1000) };
+      })
+      .toArray();
+    return mailList;
+  };
+
+  const getMailMessage = async (messageId: number): Promise<MailMessage> => {
+    if (!isLoggedIn()) {
+      throw new NoRetryError("用户未登录");
+    }
+    const response = await post.ajaxPost({ item: messageId }, "dashboard/messages/DMViewMessageModule");
+    if (response?.status !== "ok") {
+      throw new NoRetryError("获取邮件失败：" + response.body);
+    }
+    const mailDom = cheerioLoad(response.body);
+    const sender = mailDom(".pmessage > .header > div:nth-of-type(1) > .printuser:nth-of-type(1)").text().trim();
+    const title = mailDom(".pmessage > .header > div:nth-of-type(1) > .subject").text().trim();
+    mailDom(".pmessage > .body > .message-actions").remove();
+    const body = mailDom(".pmessage > .body").html() || "";
+    const time = mailDom(".pmessage > .header > div:nth-of-type(2) > .odate")
+      .attr("class")
+      ?.match(/time_(\d+)/)?.[1];
+    return { sender, title, body, time: new Date(Number(time) * 1000) };
+  };
 
   return {
     login,
@@ -251,5 +324,7 @@ export const wdModule = (baseUrl: string) => {
     isPageExistsByListpages,
     getApplicationList,
     handleApplication,
+    getMailList,
+    getMailMessage,
   };
 };
