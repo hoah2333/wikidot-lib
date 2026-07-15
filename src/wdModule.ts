@@ -1,8 +1,9 @@
 import { load as cheerioLoad } from "cheerio";
+import { match } from "ts-pattern";
 import { NoRetryError, wdMethod } from "./wdMethod";
 
 import type { CheerioAPI } from "cheerio";
-import type { AjaxResponse, Application, MailList, MailMessage, QuickModuleResponse } from "./types";
+import type { AjaxResponse, Application, MailList, MailMessage, QuickModuleResponse, UserInfo } from "./types";
 
 export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
   const post = wdMethod(baseUrl);
@@ -291,7 +292,7 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
   /**
    * 获取邮件内容
    * @param messageId 邮件 ID
-   * @returns 
+   * @returns
    */
   const getMailMessage = async (messageId: number): Promise<MailMessage> => {
     if (!isLoggedIn()) {
@@ -312,6 +313,41 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     return { sender, title, body, time: new Date(Number(time) * 1000), fullResponse: response.body };
   };
 
+  /**
+   * 获取用户信息
+   * @param userId 用户 ID
+   * @returns 用户信息
+   */
+  const getUserInfo = async (userId: number): Promise<UserInfo> => {
+    const response = await post.ajaxPost({ user_id: userId }, "users/UserInfoWinModule");
+    const userInfoDom = cheerioLoad(response.body);
+    const userName = userInfoDom(".owindow > .content > h1").text().trim();
+    const userAvatar = userInfoDom(".owindow > .content > img").attr("src") || "";
+    const tableTrs = userInfoDom(".owindow > .content > table.table tr")
+      .map((_, element) => {
+        const key = userInfoDom(element).find("td:nth-of-type(1)").text().trim();
+        const value = userInfoDom(element)
+          .find("td:nth-of-type(2)")
+          .text()
+          .replace(/\(这是什么？\)|\(what is this\?\)/g, "")
+          .trim();
+        return { key, value };
+      })
+      .toArray();
+    const accountType =
+      tableTrs.find((tr) => tr.key.includes("Account type") || tr.key.includes("账户类型"))?.value || "";
+    const accountKarmaString = tableTrs.find((tr) => tr.key.includes("Karma"))?.value || "";
+    console.log(tableTrs);
+    const accountKarma = match(accountKarmaString)
+      .with("low", "低", () => 1)
+      .with("medium", "中等", () => 2)
+      .with("high", "高", () => 3)
+      .with("very high", "非常高", () => 4)
+      .with("guru", "上师", () => 5)
+      .otherwise(() => 0);
+    return { userId, userName, userAvatar, accountType, accountKarma };
+  };
+
   return {
     login,
     logout,
@@ -330,5 +366,6 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     handleApplication,
     getMailList,
     getMailMessage,
+    getUserInfo,
   };
 };

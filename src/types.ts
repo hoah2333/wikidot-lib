@@ -32,3 +32,11 @@ export interface MailMessage {
   time: Date;
   fullResponse: string;
 }
+
+export interface UserInfo {
+  userId: number;
+  userName: string;
+  userAvatar: string;
+  accountType: string;
+  accountKarma: number;
+}
