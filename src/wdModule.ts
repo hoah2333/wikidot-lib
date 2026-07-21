@@ -337,7 +337,6 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     const accountType =
       tableTrs.find((tr) => tr.key.includes("Account type") || tr.key.includes("账户类型"))?.value || "";
     const accountKarmaString = tableTrs.find((tr) => tr.key.includes("Karma"))?.value || "";
-    console.log(tableTrs);
     const accountKarma = match(accountKarmaString)
       .with("low", "低", () => 1)
       .with("medium", "中等", () => 2)
