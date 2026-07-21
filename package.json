@@ -5,13 +5,13 @@
   "description": "A typescript library for using apis of Wikidot",
   "author": "hoah2333 <c3n6fak@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/hoah2333/wikidot-api#readme",
+  "homepage": "https://github.com/hoah2333/wikidot-lib#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hoah2333/wikidot-api.git"
+    "url": "git+https://github.com/hoah2333/wikidot-lib.git"
   },
   "bugs": {
-    "url": "https://github.com/hoah2333/wikidot-api/issues"
+    "url": "https://github.com/hoah2333/wikidot-lib/issues"
   },
   "exports": {
     ".": {

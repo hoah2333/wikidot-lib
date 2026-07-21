@@ -78,7 +78,7 @@ export const wdModule = (baseUrl: string = "https://www.wikidot.com") => {
     const gqlResult = (await post.cromApiRequest(gqlQueryString, { url: baseUrl })) as GqlResult;
     if (gqlResult.page.wikidotInfo !== null) {
       return gqlResult.page.wikidotInfo.tags;
-    } else if (!isLoggedIn) {
+    } else if (!isLoggedIn()) {
       throw new NoRetryError("用户未登录");
     } else {
       const pageTag: AjaxResponse = await post.ajaxPost(

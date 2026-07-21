@@ -10,7 +10,7 @@ export class NoRetryError extends Error {
     super(message);
     this.name = "NoRetryError";
   }
-  noRetry: boolean = false;
+  noRetry: boolean = true;
 }
 
 export const wdMethod = (baseUrl: string) => {
@@ -46,7 +46,7 @@ export const wdMethod = (baseUrl: string) => {
     try {
       return await fn();
     } catch (error) {
-      if (error instanceof NoRetryError || retryCount >= 60) throw error;
+      if (error instanceof NoRetryError || retryCount >= 30) throw error;
       await sleep(retryCount + 1);
       return await retry<T>(fn, retryCount + 1);
     }
@@ -80,6 +80,9 @@ export const wdMethod = (baseUrl: string) => {
         const setCookie: string | null = response.headers.get("Set-Cookie");
         if (setCookie) {
           const sessionId = setCookie.match(/WIKIDOT_SESSION_ID=([^;]+)/)?.[1];
+          if (!sessionId) {
+            throw new Error("登录失败");
+          }
           cookie = `WIKIDOT_SESSION_ID=${sessionId}; wikidot_udsession=1;`;
         }
       } catch (error) {
@@ -209,9 +212,9 @@ export const wdMethod = (baseUrl: string) => {
         .text()
         .match(/WIKIREQUEST\.info\.pageId\s*=\s*(\d+)\s*;/);
       if (pageIdMatch) {
-        return parseInt(pageIdMatch[0].slice(26, -1));
+        return parseInt(pageIdMatch[1]);
       } else {
-        return 0;
+        throw new Error("页面 ID 获取失败");
       }
     }
   };
